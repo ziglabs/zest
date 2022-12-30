@@ -5,8 +5,9 @@ const expectError = std.testing.expectError;
 const StatusError = error{
     InvalidStatusCode,
 };
+
 // https://www.rfc-editor.org/rfc/rfc9110#section-15
-pub const Status = enum(u16) {
+pub const Status = enum {
     @"continue",
     switching_protocols,
     ok,
@@ -380,7 +381,6 @@ test "status code 422" {
     try expect(try Status.fromString("422") == Status.unprocessable_content);
     try expect(try Status.fromU16(422) == Status.unprocessable_content);
 }
-
 
 test "status code 426" {
     const status = Status.upgrade_required;
