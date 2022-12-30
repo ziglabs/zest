@@ -17,7 +17,6 @@ pub const Method = enum {
     options,
     trace,
 
-
     // https://www.rfc-editor.org/rfc/rfc9110.html#name-methods
     pub const methods = [_][]const u8{ "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE" };
 
@@ -33,8 +32,6 @@ pub const Method = enum {
         }
         return MethodError.InvalidMethod;
     }
-
-
 };
 
 test "lengths are equal" {
@@ -90,7 +87,6 @@ test "method OPTIONS" {
     try expect(std.mem.eql(u8, method.toString(), "OPTIONS"));
     try expect(try Method.fromString("OPTIONS") == Method.options);
 }
-
 
 test "method TRACE" {
     const method = Method.trace;
