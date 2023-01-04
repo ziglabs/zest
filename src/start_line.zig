@@ -38,11 +38,11 @@ pub const StartLine = enum {
         switch (self) {
             .request => {
                 const request = try parseRequestStartLine(start_line);
-                return Result{ .request = request};
+                return Result{ .request = request };
             },
             .response => {
                 const response = try parseResponseStartLine(start_line);
-                return Result{ .response = response};
+                return Result{ .response = response };
             },
         }
     }
