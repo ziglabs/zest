@@ -2,7 +2,7 @@ const std = @import("std");
 const expect = std.testing.expect;
 const expectError = std.testing.expectError;
 
-const StatusError = error{
+pub const StatusError = error{
     InvalidStatusCode,
 };
 
