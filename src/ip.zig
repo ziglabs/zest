@@ -1,28 +1,32 @@
 const std = @import("std");
+const expect = std.testing.expect;
+const expectError = std.testing.expectError;
 
 pub const IpError = error{
     InvalidIpAddress,
 };
 
-pub const Ip = union(enum) { ipv4: std.net.Ip4Address, ipv6: std.net.Ip6Address };
-
-pub fn fromString(ip: []const u8) IpError!Ip {
-    const maybe_ipv4 = std.net.Ip4Address.parse(ip, 0) catch IpError.InvalidIpAddress;
-    const maybe_ipv6 = std.net.Ip6Address.parse(ip, 0) catch IpError.InvalidIpAddress;
-
-    if (maybe_ipv4 != IpError.InvalidIpAddress) {
-        return Ip{ .ipv4 = maybe_ipv4 };
-    } else if (maybe_ipv6 != IpError.InvalidIpAddress) {
-        return Ip{ .ipv6 = maybe_ipv6 };
-    } else {
-        return IpError.InvalidIpAddress;
-    }
+pub fn fromString(ip: []const u8) IpError!std.net.Address {
+    return std.net.Address.parseIp4(ip, 0) catch std.net.Address.parseIp6(ip, 0) catch IpError.InvalidIpAddress;
 }
 
-test "valid ipv4 addresses" {}
+test "valid ipv4 addresses" {
+    try expect(@TypeOf(try fromString("172.16.254.1")) == std.net.Address);
+    try expect(@TypeOf(try fromString("192.0.1.246")) == std.net.Address);
+}
 
-test "valid ipv6 addresses" {}
+test "valid ipv6 addresses" {
+    try expect(@TypeOf(try fromString("2002:db8::8a3f:362:7897")) == std.net.Address);
+    try expect(@TypeOf(try fromString("2001:db8::7")) == std.net.Address);
+}
 
-test "invalid ipv4 addresses" {}
+test "invalid ipv4 addresses" {
+    const expected_error = IpError.InvalidIpAddress;
+    try expectError(expected_error, fromString("172.16.256.1"));
+    try expectError(expected_error, fromString("192.168. 01.1"));
+}
 
-test "invalid ipv6 addresses" {}
+test "invalid ipv6 addresses" {
+    const expected_error = IpError.InvalidIpAddress;
+    try expectError(expected_error, fromString("56FE::2159:5BBC::6594"));
+}
