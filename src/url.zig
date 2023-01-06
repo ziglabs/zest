@@ -11,7 +11,7 @@ const path = @import("path.zig");
 
 pub const UrlError = error{InvalidUrl};
 
-pub const Error = scheme.SchemeError || host.HostError || port.PortError || path.PathError;
+pub const Error = UrlError || scheme.SchemeError || host.HostError || port.PortError || path.PathError;
 
 pub const Url = struct {
     scheme: scheme.Scheme,
@@ -43,27 +43,25 @@ pub fn parse(url: []const u8) Error!Url {
 
     slice = if (iterator.next()) |s| s else return UrlError.InvalidUrl;
 
-    const port_colon_index = if (std.mem.indexOf(u8, slice, ":")) |index| index else -1;
+    const port_colon_index = std.mem.indexOf(u8, slice, ":");
     const slash_index = if (std.mem.indexOf(u8, slice, "/")) |index| index else return UrlError.InvalidUrl;
 
-    const parsed_port = if (port_colon_index == -1) {
-        null;
-    } else if (slash_index - port_colon_index > 0) {
-        try port.parse(slice[port_colon_index + 1..slash_index]);
-    } else {
-        return UrlError.InvalidUrl;
-    };
+    const parsed_port = if (port_colon_index) |index| blk: {
+        if (slash_index - index > 1) {
+            break :blk try port.parse(slice[(index + 1)..slash_index]);
+        } else {
+            return UrlError.InvalidUrl;
+        }
+    } else null;
 
-    var parsed_host = if (port_colon_index == -1) {
-        try host.parse(slice[0..slash_index]);
-    } else if (port_colon_index < slash_index) {
-        try host.parse(slice[0..port_colon_index]);
-    } else {
-         return UrlError.InvalidUrl;
-    };
-    
+    const parsed_host = if (port_colon_index) |index| blk: {
+        if (index < slash_index) {
+            break :blk try host.parse(slice[0..index]);
+        } else return UrlError.InvalidUrl;
+    } else try host.parse(slice[0..slash_index]);
+
     const parsed_path = try path.parse(slice[slash_index..]);
-    return Url{.scheme = parsed_scheme, .host = parsed_host, .port = parsed_port, .path = parsed_path};
+    return Url{ .scheme = parsed_scheme, .host = parsed_host, .port = parsed_port, .path = parsed_path };
 }
 
 test "format" {
@@ -75,4 +73,22 @@ test "format" {
 
     url = Url{ .scheme = scheme.Scheme.http, .host = try host.parse("172.16.254.1"), .port = 8080, .path = try path.parse("/hello/there") };
     try expectFmt("http://172.16.254.1:8080/hello/there", "{}", .{url});
+}
+
+test "parse 1" {
+    const url_to_parse = "http://172.16.254.1:8080/hello/there";
+    const url = try parse(url_to_parse);
+    try expectEqualStrings(url.scheme.toString(), "http");
+    try expectEqualStrings(url.host, "172.16.254.1");
+    try expect(url.port.? == 8080);
+    try expectEqualStrings(url.path, "/hello/there");
+}
+
+test "parse 2" {
+    const url_to_parse = "http://172.16.254.1/hello/there";
+    const url = try parse(url_to_parse);
+    try expectEqualStrings(url.scheme.toString(), "http");
+    try expectEqualStrings(url.host, "172.16.254.1");
+    try expect(url.port == null);
+    try expectEqualStrings(url.path, "/hello/there");
 }
