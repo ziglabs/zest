@@ -14,13 +14,6 @@ pub fn parse(port: []const u8) PortError!u16 {
     if (result >= 1 and result <= 65535) return result else return PortError.InvalidPort;
 }
 
-pub fn fromScheme(scheme: Scheme) u16 {
-    return switch (scheme) {
-        .http => 80,
-        .https => 443,
-    };
-}
-
 test "valid ports" {
     try expect(try parse("9000") == 9000);
     try expect(try parse("1") == 1);
@@ -32,9 +25,4 @@ test "invalid ports" {
     try expectError(expected_error, parse("hello"));
     try expectError(expected_error, parse("0"));
     try expectError(expected_error, parse("65536"));
-}
-
-test "port from scheme" {
-    try expect(fromScheme(Scheme.http) == 80);
-    try expect(fromScheme(Scheme.https) == 443);
 }

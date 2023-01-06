@@ -8,29 +8,20 @@ pub const HostError = error{
     InvalidHost,
 };
 
-pub const Host = union(enum) {
-    ip: std.net.Address,
-    name: []const u8,
-};
-
-pub fn parse(host: []const u8) HostError!Host {
-    const maybe_ip = ip.parse(host) catch {
-        if (std.net.isValidHostName(host)) {
-            return Host{ .name = host };
-        } else {
-            return HostError.InvalidHost;
-        }
+pub fn parse(host: []const u8) HostError![]const u8 {
+    _ = ip.parse(host) catch {
+        if (std.net.isValidHostName(host)) return host else return HostError.InvalidHost;
     };
 
-    return Host{ .ip = maybe_ip };
+    return host;
 }
 
 test "valid hosts" {
     const host_1 = try parse("hello.com");
-    try expectEqualStrings("hello.com", host_1.name);
+    try expectEqualStrings("hello.com", host_1);
 
     const host_2 = try parse("172.16.254.1");
-    try expect(host_2 == .ip);
+    try expectEqualStrings("172.16.254.1", host_2);
 }
 
 test "invalid hosts" {
