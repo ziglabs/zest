@@ -7,7 +7,7 @@ pub const PathError = error{
     InvalidPath,
 };
 
-pub fn fromString(path: []const u8) PathError![]const u8 {
+pub fn parse(path: []const u8) PathError![]const u8 {
     if (path.len == 0) return PathError.InvalidPath;
     if (path[0] != '/') return PathError.InvalidPath;
     if (path.len > 1 and path[path.len - 1] == '/') return PathError.InvalidPath;
@@ -26,15 +26,15 @@ fn isUnreserved(char: u8) bool {
 }
 
 test "valid paths" {
-    try expectEqualStrings(try fromString("/"), "/");
-    try expectEqualStrings(try fromString("/hello"), "/hello");
-    try expectEqualStrings(try fromString("/heLLo-1/there.9_kj~"), "/heLLo-1/there.9_kj~");
+    try expectEqualStrings(try parse("/"), "/");
+    try expectEqualStrings(try parse("/hello"), "/hello");
+    try expectEqualStrings(try parse("/heLLo-1/there.9_kj~"), "/heLLo-1/there.9_kj~");
 }
 
 test "invalid paths" {
     const expected_error = PathError.InvalidPath;
-    try expectError(expected_error, fromString("//"));
-    try expectError(expected_error, fromString("/hi/"));
-    try expectError(expected_error, fromString(""));
-    try expectError(expected_error, fromString("/he /d"));
+    try expectError(expected_error, parse("//"));
+    try expectError(expected_error, parse("/hi/"));
+    try expectError(expected_error, parse(""));
+    try expectError(expected_error, parse("/he /d"));
 }

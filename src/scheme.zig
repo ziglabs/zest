@@ -19,7 +19,7 @@ pub const Scheme = enum {
 // https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml
 pub const schemes = [_][]const u8{ "http", "https" };
 
-pub fn fromString(scheme: []const u8) SchemeError!Scheme {
+pub fn parse(scheme: []const u8) SchemeError!Scheme {
     for (schemes) |v, i| {
         if (std.mem.eql(u8, v, scheme)) {
             return @intToEnum(Scheme, i);
@@ -35,19 +35,19 @@ test "lengths are equal" {
 
 test "invalid values return an error" {
     const expected_error = SchemeError.UnsupportedScheme;
-    try expectError(expected_error, fromString(""));
-    try expectError(expected_error, fromString(" "));
-    try expectError(expected_error, fromString("HELLO"));
+    try expectError(expected_error, parse(""));
+    try expectError(expected_error, parse(" "));
+    try expectError(expected_error, parse("HELLO"));
 }
 
 test "scheme http" {
     const scheme = Scheme.http;
     try expect(std.mem.eql(u8, scheme.toString(), "http"));
-    try expect(try fromString("http") == Scheme.http);
+    try expect(try parse("http") == Scheme.http);
 }
 
 test "scheme https" {
     const scheme = Scheme.https;
     try expect(std.mem.eql(u8, scheme.toString(), "https"));
-    try expect(try fromString("https") == Scheme.https);
+    try expect(try parse("https") == Scheme.https);
 }

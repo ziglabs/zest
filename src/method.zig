@@ -18,7 +18,7 @@ pub const Method = enum {
 // https://www.rfc-editor.org/rfc/rfc9110.html#name-methods
 pub const methods = [_][]const u8{"POST"};
 
-pub fn fromString(method: []const u8) MethodError!Method {
+pub fn parse(method: []const u8) MethodError!Method {
     for (methods) |m, i| {
         if (std.mem.eql(u8, m, method)) {
             return @intToEnum(Method, i);
@@ -34,13 +34,13 @@ test "lengths are equal" {
 
 test "invalid values return an error" {
     const expected_error = MethodError.UnsupportedMethod;
-    try expectError(expected_error, fromString(""));
-    try expectError(expected_error, fromString(" "));
-    try expectError(expected_error, fromString("HELLO"));
+    try expectError(expected_error, parse(""));
+    try expectError(expected_error, parse(" "));
+    try expectError(expected_error, parse("HELLO"));
 }
 
 test "method POST" {
     const method = Method.post;
     try expect(std.mem.eql(u8, method.toString(), "POST"));
-    try expect(try fromString("POST") == Method.post);
+    try expect(try parse("POST") == Method.post);
 }
