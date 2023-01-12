@@ -73,6 +73,9 @@ test "format" {
 
     url = Url{ .scheme = scheme.Scheme.http, .host = try host.parse("172.16.254.1"), .port = 8080, .path = try path.parse("/hello/there") };
     try expectFmt("http://172.16.254.1:8080/hello/there", "{}", .{url});
+
+    url = Url{ .scheme = scheme.Scheme.http, .host = try host.parse("[2002:db8::8a3f:362:7897]"), .port = 8080, .path = try path.parse("/") };
+    try expectFmt("http://[2002:db8::8a3f:362:7897]:8080/", "{}", .{url});
 }
 
 test "parse 1" {
