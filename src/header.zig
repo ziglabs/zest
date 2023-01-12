@@ -18,10 +18,11 @@ pub fn parse(header: []const u8) HeaderError!Header {
     if (std.mem.count(u8, header, ": ") != 1) return HeaderError.InvalidHeader;
 
     var iterator = std.mem.split(u8, header, ": ");
-    const name = iterator.first();
-    const value = if (iterator.next()) |v| v else return HeaderError.InvalidHeader;
 
+    const name = iterator.first();
     if (!validName(name)) return HeaderError.InvalidHeaderName;
+
+    const value = if (iterator.next()) |v| v else return HeaderError.InvalidHeader;
     if (!validValue(value)) return HeaderError.InvalidHeaderValue;
 
     return Header{ .name = name, .value = value };
