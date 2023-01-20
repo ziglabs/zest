@@ -2,66 +2,140 @@ const std = @import("std");
 const expect = std.testing.expect;
 const expectError = std.testing.expectError;
 const expectEqualStrings = std.testing.expectEqualStrings;
-const header = @import("header.zig");
-const Header = header.Header;
 
-pub const HeadersError = error {
+pub const HeadersError = error{
+    InvalidHeader,
+    InvalidHeaderName,
+    InvalidHeaderValue,
     OutOfSpace,
 };
 
 pub const Headers = struct {
-    headers: [2]Header = undefined,
-    index: u8 = 0,
+    headers: std.StringHashMap([]const u8),
 
-    pub fn append(self: *Headers, content: Header) HeadersError!void {
-        if (self.index == self.headers.len) return HeadersError.OutOfSpace;
-
-        self.headers[self.index] = content;
-        self.index += 1;
+    pub fn init(allocator: std.mem.Allocator) Headers {
+        return Headers{ .headers = std.StringHashMap([]const u8).init(allocator) };
     }
 
-    pub fn get(self: Headers, name: []const u8) ?Header {
-        if (self.index == 0) return null;
-        for (self.headers) |item| {
-            if (std.mem.eql(u8, item.name, name)) return item;
-        }
-        return null;
+    pub fn get(self: Headers, name: []const u8) ?[]const u8 {
+        return self.headers.get(name);
+    }
+
+    pub fn put(self: *Headers, name: []const u8, value: []const u8) !void {
+        if (!validName(name)) return HeadersError.InvalidHeaderName;
+        if (!validValue(value)) return HeadersError.InvalidHeaderValue;
+
+        self.headers.put(name, value) catch return HeadersError.OutOfSpace;
+    }
+
+    pub fn parse(self: *Headers, header: []const u8) HeadersError!void {
+        if (header.len == 0) return HeadersError.InvalidHeader;
+        if (std.mem.count(u8, header, ": ") != 1) return HeadersError.InvalidHeader;
+
+        var iterator = std.mem.split(u8, header, ": ");
+
+        const name = iterator.first();
+        if (!validName(name)) return HeadersError.InvalidHeaderName;
+
+        const value = if (iterator.next()) |v| v else return HeadersError.InvalidHeader;
+        if (!validValue(value)) return HeadersError.InvalidHeaderValue;
+
+        try self.put(name, value);
     }
 };
 
-test "append headers" {
-    const header_1 = try header.parse("Content-Length: 9000");
-    const header_2 = try header.parse("Content-Type: application/json");
-    var headers = Headers{};
-    try headers.append(header_1);
-    try headers.append(header_2);
+fn validName(name: []const u8) bool {
+    for (name) |char| {
+        if (!valid_header_name_characters[char]) return false;
+    }
+    return true;
 }
 
-test "get header" {
-    const header_1 = try header.parse("Content-Length: 9000");
-    var headers = Headers{};
-    try headers.append(header_1);
-
-    const get_header_1 = headers.get("Content-Length") orelse unreachable;
-    try expectEqualStrings("Content-Length", get_header_1.name);
-    try expectEqualStrings("9000", get_header_1.value);
+fn validValue(value: []const u8) bool {
+    for (value) |char| {
+        if (!valid_header_value_characters[char]) return false;
+    }
+    return true;
 }
 
-test "get out of space error" {
-    var headers = Headers{};
-    try headers.append(try header.parse("Content-Type: application/json"));
-    try headers.append(try header.parse("Content-Type: application/json"));
+const valid_header_name_characters = [_]bool{
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, true,  false, true,  true,  true,  true,  true,  false, false, true,  true,  false, true,  true,  false,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  false, false, false, false, false, false,
+    false, true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  false, false, false, true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  false, true,  false, true,  false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+};
+
+const valid_header_value_characters = [_]bool{
+    false, false, false, false, false, false, false, false, false, true,  false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  false,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+    true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,  true,
+};
+
+test "valid header" {
+    var buffer: [300]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    var headers = Headers.init(fba.allocator());
+
+    try headers.parse("Content-Length: 42");
+    const value = headers.get("Content-Length") orelse unreachable;
+    try expectEqualStrings("42", value);
+}
+
+test "invalid header" {
+    var buffer: [300]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    var headers = Headers.init(fba.allocator());
+
+    var expected_error = HeadersError.InvalidHeaderName;
+    try expectError(expected_error, headers.parse("Con(tent-Length: 42"));
+
+    expected_error = HeadersError.InvalidHeaderValue;
+    try expectError(expected_error, headers.parse("Content-Length: 4\r2"));
+
+    expected_error = HeadersError.InvalidHeader;
+    try expectError(expected_error, headers.parse("Content-Length:42"));
+
+    expected_error = HeadersError.InvalidHeader;
+    try expectError(expected_error, headers.parse(""));
+}
+
+test "out of space error" {
+    var buffer: [300]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    var headers = Headers.init(fba.allocator());
+
+    try headers.put("a", "1");
+    try headers.put("b", "2");
+    try headers.put("c", "3");
+    try headers.put("d", "4");
+    try headers.put("e", "5");
+    try headers.put("f", "6");
 
     const expected_error = HeadersError.OutOfSpace;
-    try expectError(expected_error, headers.append(try header.parse("Content-Type: application/json")));
-}
-
-test "get back null" {
-    var headers = Headers{};
-    var result = headers.get("hello");
-    try expect(result == null);
-
-    try headers.append(try header.parse("Content-Type: application/json"));
-    result = headers.get("hello");
-    try expect(result == null);
+    try expectError(expected_error, headers.parse("g: 7"));
 }

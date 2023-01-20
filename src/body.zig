@@ -9,15 +9,13 @@ pub const BodyError = error {
     CannotStringifyBody,
 };
 
-pub fn parse(buffer: []u8, comptime T: type, body: []const u8) !T {
-    var fba = std.heap.FixedBufferAllocator.init(buffer);
+pub fn parse(allocator: std.mem.Allocator, comptime T: type, body: []const u8) !T {
     var stream = json.TokenStream.init(body);
-    return try json.parse(T, &stream, .{.allocator = fba.allocator()});
+    return try json.parse(T, &stream, .{.allocator = allocator});
 }
 
-pub fn stringify(buffer: []u8, comptime T: type, content: T) BodyError![]const u8 {
-    var fba = std.heap.FixedBufferAllocator.init(buffer);
-    return std.json.stringifyAlloc(fba.allocator(), content, .{}) catch BodyError.CannotStringifyBody;
+pub fn stringify(allocator: std.mem.Allocator, comptime T: type, content: T) BodyError![]const u8 {
+    return std.json.stringifyAlloc(allocator, content, .{}) catch BodyError.CannotStringifyBody;
 }
 
 // test "testing 1" {
@@ -84,8 +82,9 @@ test "testing 6" {
         hello: []const u8,
     };
     var buffer: [6]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
     const body = "{\"greeting\": \"9999\", \"hello\": \"88\"}";
-    const result = try parse(&buffer, Config, body);
+    const result = try parse(fba.allocator(), Config, body);
     try expectEqualStrings(result.greeting, "9999");
     try expectEqualStrings(result.hello, "88");
 }
