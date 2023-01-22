@@ -14,7 +14,7 @@ pub const StartLineError = error{
 
 pub const Error = StartLineError || method.MethodError || path.PathError || status.StatusError || version.VersionError;
 
-pub const Result = union(enum) {
+pub const Type = union(enum) {
     request: Request,
     response: Response,
 };
@@ -34,15 +34,15 @@ pub const StartLine = enum {
     request,
     response,
 
-    pub fn parse(self: StartLine, start_line: []const u8) Error!Result {
+    pub fn parse(self: StartLine, start_line: []const u8) Error!Type {
         switch (self) {
             .request => {
                 const request = try parseRequestStartLine(start_line);
-                return Result{ .request = request };
+                return Type{ .request = request };
             },
             .response => {
                 const response = try parseResponseStartLine(start_line);
-                return Result{ .response = response };
+                return Type{ .response = response };
             },
         }
     }
@@ -52,15 +52,15 @@ fn parseRequestStartLine(start_line: []const u8) Error!Request {
     var iterator = std.mem.split(u8, start_line, " ");
     var slice = iterator.first();
 
-    const parsed_method = try method.fromString(slice);
+    const parsed_method = try method.parse(slice);
 
     slice = if (iterator.next()) |s| s else return StartLineError.InvalidStartLine;
 
-    const parsed_path = try path.fromString(slice);
+    const parsed_path = try path.parse(slice);
 
     slice = if (iterator.next()) |s| s else return StartLineError.InvalidStartLine;
 
-    const parsed_version = try version.fromString(slice);
+    const parsed_version = try version.parse(slice);
 
     if (iterator.next() != null) {
         return StartLineError.InvalidStartLine;
@@ -73,11 +73,11 @@ fn parseResponseStartLine(start_line: []const u8) Error!Response {
     var iterator = std.mem.split(u8, start_line, " ");
     var slice = iterator.first();
 
-    const parsed_version = try version.fromString(slice);
+    const parsed_version = try version.parse(slice);
 
     slice = if (iterator.next()) |s| s else return StartLineError.InvalidStartLine;
 
-    const parsed_status = try status.fromString(slice);
+    const parsed_status = try status.parse(slice);
 
     if (iterator.next() != null) {
         return StartLineError.InvalidStartLine;
