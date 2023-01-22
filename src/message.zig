@@ -9,7 +9,7 @@ pub fn Message(comptime Body: type) type {
     return struct { start_line: sl.Type, headers: h.Headers, body: Body };
 }
 
-pub fn Result(start_line: sl.Type, headers: h.Headers, comptime Body: type, body: Body) Message(Body) {
+pub fn Build(start_line: sl.Type, headers: h.Headers, comptime Body: type, body: Body) Message(Body) {
     return Message(Body){ .start_line = start_line, .headers = headers, .body = body };
 }
 
@@ -25,7 +25,12 @@ test "test" {
     var headers = h.Headers.init(fba.allocator());
     try headers.parse("Content-Length: 42");
 
-    const bm = Result(start_line, headers, Greeting, Greeting{ .hi = 9 });
+    const bm = Build(start_line, headers, Greeting, Greeting{ .hi = 9 });
 
     try expect(bm.body.hi == 9);
+
+    // try expect(@typeInfo(@TypeOf(bm.body)) == Greeting);
+
+    try expect(@TypeOf(bm.body) == Greeting);
+
 }
