@@ -33,13 +33,9 @@ pub const Headers = struct {
         if (std.mem.count(u8, header, ": ") != 1) return HeadersError.InvalidHeader;
 
         var iterator = std.mem.split(u8, header, ": ");
-
         const name = iterator.first();
-        if (!validName(name)) return HeadersError.InvalidHeaderName;
-
         const value = if (iterator.next()) |v| v else return HeadersError.InvalidHeader;
-        if (!validValue(value)) return HeadersError.InvalidHeaderValue;
-
+        
         try self.put(name, value);
     }
 };

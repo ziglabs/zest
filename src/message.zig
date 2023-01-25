@@ -1,6 +1,8 @@
 const std = @import("std");
 const expect = std.testing.expect;
 const expectError = std.testing.expectError;
+const expectEqualStrings = std.testing.expectEqualStrings;
+
 const h = @import("headers.zig");
 const sl = @import("start_line.zig");
 
@@ -28,9 +30,9 @@ test "test" {
     const bm = Build(start_line, headers, Greeting, Greeting{ .hi = 9 });
 
     try expect(bm.body.hi == 9);
-
-    // try expect(@typeInfo(@TypeOf(bm.body)) == Greeting);
-
     try expect(@TypeOf(bm.body) == Greeting);
-
+    try expectEqualStrings(bm.headers.get("Content-Length") orelse unreachable, "42");
+    try expect(bm.start_line.request.method == .post);
+    try expectEqualStrings(bm.start_line.request.path, "/hello");
+    try expect(bm.start_line.request.version == .http11);
 }
