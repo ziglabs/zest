@@ -80,11 +80,13 @@ test "testing 6" {
     const Config = struct {
         greeting: []const u8,
         hello: []const u8,
+        you: u8,
     };
     var buffer: [6]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
-    const body = "{\"greeting\": \"9999\", \"hello\": \"88\"}";
+    const body = "{\"greeting\": \"9999\", \"hello\": \"88\", \"you\": 9}";
     const result = try parse(fba.allocator(), Config, body);
     try expectEqualStrings(result.greeting, "9999");
     try expectEqualStrings(result.hello, "88");
+    try expect(result.you == 9);
 }
