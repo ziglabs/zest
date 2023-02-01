@@ -1,13 +1,28 @@
 const std = @import("std");
 const log = std.log.scoped(.zest);
 const net = std.net;
-const sl = @import("start_line.zig");
+const rl = @import("request_line.zig");
 const h = @import("headers.zig");
 
-pub fn start(address: net.Address) !void {
+pub const Config = struct {
+    address: std.net.Address,
+    max_request_line_bytes: u64,
+    max_headers_bytes: u64,
+    max_headers_map_bytes: u64,
+    max_body_bytes: u64,
+};
+
+pub fn start(comptime config: Config) !void {
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
-    try server.listen(address);
+    try server.listen(config.address);
+
+    var headers_map_buffer: [config.max_headers_map_bytes]u8 = undefined;
+    var headers_map_fba = std.heap.FixedBufferAllocator.init(&headers_map_buffer);
+
+    var headers_buffer: [config.max_headers_bytes]u8 = undefined;
+    var headers_fba = std.heap.FixedBufferAllocator.init(&headers_buffer);
+
     while (true) {
         var connection = server.accept() catch |err| switch (err) {
             error.ConnectionResetByPeer, error.ConnectionAborted => {
@@ -18,23 +33,30 @@ pub fn start(address: net.Address) !void {
         };
         var br = std.io.bufferedReader(connection.stream.reader());
         const r = br.reader();
-        var start_line_buff: [1024]u8 = undefined;
-        const start_line = try r.readUntilDelimiter(&start_line_buff, '\r');
-        const start_line_result = try sl.StartLine.request.parse(start_line);
-        std.debug.print("\npath: {s}\n", .{start_line_result.request.path});
+        
+        var request_line_buffer: [config.max_request_line_bytes]u8 = undefined;
+        const read_request_line = try r.readUntilDelimiter(&request_line_buffer, '\r');
+        const parsed_request_line = try rl.parse(read_request_line);
+        _ = parsed_request_line;
 
         // skips the \n
         try r.skipBytes(1, .{});
 
-        var headers_buff: [1024]u8 = undefined;
-        const header = try r.readUntilDelimiter(&headers_buff, '\r');
+        var headers_map = h.Headers.init(headers_map_fba.allocator());
+   
+        read_headers: while(true) {
+            const header = try r.readUntilDelimiterAlloc(headers_fba.allocator(), '\r', config.max_headers_bytes);
+            if (std.mem.eql(u8, header, "")) break :read_headers;
+            try headers_map.parse(header);
+            // skips the \n
+            try r.skipBytes(1, .{});             
+        }
 
-        var buffer: [300]u8 = undefined;
-        var fba = std.heap.FixedBufferAllocator.init(&buffer);
-        var headers = h.Headers.init(fba.allocator());
+        std.debug.print("\nAuthorization: {s}\n", .{headers_map.get("Authorization") orelse ""});
+        std.debug.print("\nPostman-Token: {s}\n", .{headers_map.get("Postman-Token") orelse ""});
 
-        try headers.parse(header);
-        std.debug.print("header: {s}", .{headers.get("Authorization") orelse ""});
+        headers_map_fba.reset();
+        headers_fba.reset();
     }
 }
 
