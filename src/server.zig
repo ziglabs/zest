@@ -3,6 +3,7 @@ const expect = std.testing.expect;
 const log = std.log.scoped(.zest);
 const net = std.net;
 const rl = @import("request_line.zig");
+const req = @import("request.zig");
 const h = @import("headers.zig");
 const b = @import("body.zig");
 
@@ -80,28 +81,19 @@ pub fn start(comptime config: Config, routes: anytype) !void {
 
         const read_body = try r.readUntilDelimiterOrEofAlloc(body_fba.allocator(), '\r', config.max_body_bytes);
         const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body orelse "");
-        std.debug.print("{d}", .{parsed_body.hi});
 
-        // const a = headers_map.get("Authorization") orelse "";
-        // const p = headers_map.get("Postman-Token") orelse "";
-        // std.debug.print("\nAuthorization: {s}\n", .{a});
-        // std.debug.print("\nPostman-Token: {s}\n", .{p});
+        const request = req.Build(parsed_request_line, headers_map, route.request_body_type, parsed_body);
 
+        const a = headers_map.get("Authorization") orelse "";
+        const p = headers_map.get("Postman-Token") orelse "";
+        std.debug.print("\nAuthorization: {s}\n", .{a});
+        std.debug.print("\nPostman-Token: {s}\n", .{p});
 
+        std.debug.print("\nbody hi: {d}\n", .{request.body.hi});
+
+        var bw = std.io.bufferedWriter(connection.stream.writer());
+        const w = bw.writer();
+        try w.writeAll("hello");
+        connection.stream.close(); 
     }
 }
-
-test "test" {
-    try expect(true);
-}
-
-// // my_stream: std.net.Stream
-
-// var br = std.io.bufferedReader(conn.stream.reader());
-// const r = br.reader(); // get the std.io.Reader from the buffered reader - this is backed by an in-memory buffer to prevent constant syscalls
-
-// // let's read the start line!
-// var line_buf: [1024]u8 = undefined; // reasonable max size
-// const start_line = try r.readUntilDelimiter(&line_buf, '\n');
-// // you'll have to check for the CR yourself
-// // then do stuff with start_line
