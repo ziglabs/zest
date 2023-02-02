@@ -78,8 +78,8 @@ pub fn start(comptime config: Config, routes: anytype) !void {
         // skips the \n
         try r.skipBytes(1, .{});
 
-        const read_body = try r.readUntilDelimiterAlloc(body_fba.allocator(), '\r', config.max_body_bytes);
-        const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body);
+        const read_body = try r.readUntilDelimiterOrEofAlloc(body_fba.allocator(), '\r', config.max_body_bytes);
+        const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body orelse "");
         std.debug.print("{d}", .{parsed_body.hi});
 
         // const a = headers_map.get("Authorization") orelse "";
