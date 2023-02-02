@@ -17,6 +17,9 @@ pub fn start(comptime config: Config) !void {
     defer server.deinit();
     try server.listen(config.address);
 
+    var request_line_buffer: [config.max_request_line_bytes]u8 = undefined;
+    var request_line_fba = std.heap.FixedBufferAllocator.init(&request_line_buffer);
+
     var headers_map_buffer: [config.max_headers_map_bytes]u8 = undefined;
     var headers_map_fba = std.heap.FixedBufferAllocator.init(&headers_map_buffer);
 
@@ -34,8 +37,7 @@ pub fn start(comptime config: Config) !void {
         var br = std.io.bufferedReader(connection.stream.reader());
         const r = br.reader();
         
-        var request_line_buffer: [config.max_request_line_bytes]u8 = undefined;
-        const read_request_line = try r.readUntilDelimiter(&request_line_buffer, '\r');
+        const read_request_line = try r.readUntilDelimiterAlloc(request_line_fba.allocator(), '\r', config.max_request_line_bytes);
         const parsed_request_line = try rl.parse(read_request_line);
         _ = parsed_request_line;
 
@@ -55,6 +57,7 @@ pub fn start(comptime config: Config) !void {
         std.debug.print("\nAuthorization: {s}\n", .{headers_map.get("Authorization") orelse ""});
         std.debug.print("\nPostman-Token: {s}\n", .{headers_map.get("Postman-Token") orelse ""});
 
+        request_line_fba.reset();
         headers_map_fba.reset();
         headers_fba.reset();
     }
