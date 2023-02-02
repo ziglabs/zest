@@ -1,5 +1,7 @@
 const std = @import("std");
 const zest = @import("zest.zig");
+const request = @import("request.zig");
+const response = @import("response.zig");
 
 // pub fn main() !void {
 //     const config = comptime zest.server.Config{ 
@@ -20,11 +22,12 @@ const No = struct {
     bye: u8,
 };
 
-fn yes(comptime request: zest.request.Request(Yes), comptime response: *zest.response.Response(No)) !void {
-    _ = request;
-    _ = response;
+pub fn yoyo(req: request.Request(Yes), res: *response.Response(No)) anyerror!void {
+    _ = req;
+    _ = res;
 }
+
 pub fn main() !void {
-    const route = try zest.route.Build("/hello", Yes, No, yes);
-    std.debud.print("path: {s}", .{route.path});
+    const route = try zest.route.Build("/hello", Yes, No, yoyo);
+    std.debug.print("path: {s}", .{route.path});
 }
