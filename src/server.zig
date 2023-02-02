@@ -84,10 +84,8 @@ pub fn start(comptime config: Config, routes: anytype) !void {
 
         const request = req.Build(parsed_request_line, headers_map, route.request_body_type, parsed_body);
 
-        const a = headers_map.get("Authorization") orelse "";
-        const p = headers_map.get("Postman-Token") orelse "";
-        std.debug.print("\nAuthorization: {s}\n", .{a});
-        std.debug.print("\nPostman-Token: {s}\n", .{p});
+        const a = headers_map.get("Content-Type") orelse "";
+        std.debug.print("\nContent-Type: {s}\n", .{a});
 
         std.debug.print("\nbody hi: {d}\n", .{request.body.hi});
 
@@ -97,3 +95,5 @@ pub fn start(comptime config: Config, routes: anytype) !void {
         connection.stream.close(); 
     }
 }
+
+// curl -X POST http://127.0.0.1:8080/hello -H "Content-Type: application/json" -d '{"hi": 8}'
