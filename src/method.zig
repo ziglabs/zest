@@ -42,5 +42,6 @@ test "invalid values return an error" {
 test "method POST" {
     const method = Method.post;
     try expect(std.mem.eql(u8, method.toString(), "POST"));
-    try expect(try parse("POST") == Method.post);
+    const result = try parse("POST");
+    try expect(result == Method.post);
 }
