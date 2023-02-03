@@ -53,6 +53,9 @@ pub fn start(comptime config: Config, routes: anytype) !void {
         var br = std.io.bufferedReader(connection.stream.reader());
         const r = br.reader();
 
+        var bw = std.io.bufferedWriter(connection.stream.writer());
+        const w = bw.writer();
+
         const read_request_line = try r.readUntilDelimiterAlloc(request_line_fba.allocator(), '\r', config.max_request_line_bytes);
         const parsed_request_line = try rl.parse(read_request_line);
 
@@ -62,6 +65,9 @@ pub fn start(comptime config: Config, routes: anytype) !void {
             }
         } else {
             log.err("Path not found - returning 404", .{});
+            try w.writeAll("HTTP/1.1 404\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
             continue;
         };
 
@@ -80,22 +86,21 @@ pub fn start(comptime config: Config, routes: anytype) !void {
 
         // skips the \n
         try r.skipBytes(1, .{});
-_ = route;
-        // const read_body = try r.readAllAlloc(body_fba.allocator(), config.max_body_bytes);
-        // const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body);
 
-        // const request = req.Build(parsed_request_line, headers_map, route.request_body_type, parsed_body);
+        const read_body = try r.readAllAlloc(body_fba.allocator(),config.max_body_bytes);
+        std.debug.print("{s}", .{read_body});
+        const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body);
 
-        // const a = headers_map.get("Content-Type") orelse "";
-        // std.debug.print("\nContent-Type: {s}\n", .{a});
+        const request = req.Build(parsed_request_line, headers_map, route.request_body_type, parsed_body);
 
-        // std.debug.print("\nhi: {d}\n", .{request.body.hi});
+        const a = request.headers.get("Content-Type") orelse "";
+        std.debug.print("\nContent-Type: {s}\n", .{a});
 
-        var bw = std.io.bufferedWriter(connection.stream.writer());
-        const w = bw.writer();
+        std.debug.print("\nhi: {d}\n", .{request.body.hi});
+
         try w.writeAll("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nhi");
         try bw.flush();
-        connection.stream.close(); 
+        connection.stream.close();
     }
 }
 
