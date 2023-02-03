@@ -49,11 +49,13 @@ pub fn start(comptime config: Config, routes: anytype) !void {
             },
             else => return err,
         };
+
         var br = std.io.bufferedReader(connection.stream.reader());
         const r = br.reader();
 
         const read_request_line = try r.readUntilDelimiterAlloc(request_line_fba.allocator(), '\r', config.max_request_line_bytes);
         const parsed_request_line = try rl.parse(read_request_line);
+
         const route = get_route: inline for (routes) |route| {
             if (std.mem.eql(u8, route.path, parsed_request_line.path)) {
                 break :get_route route;
@@ -78,20 +80,21 @@ pub fn start(comptime config: Config, routes: anytype) !void {
 
         // skips the \n
         try r.skipBytes(1, .{});
+_ = route;
+        // const read_body = try r.readAllAlloc(body_fba.allocator(), config.max_body_bytes);
+        // const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body);
 
-        const read_body = try r.readUntilDelimiterOrEofAlloc(body_fba.allocator(), '\r', config.max_body_bytes);
-        const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body orelse "");
+        // const request = req.Build(parsed_request_line, headers_map, route.request_body_type, parsed_body);
 
-        const request = req.Build(parsed_request_line, headers_map, route.request_body_type, parsed_body);
+        // const a = headers_map.get("Content-Type") orelse "";
+        // std.debug.print("\nContent-Type: {s}\n", .{a});
 
-        const a = headers_map.get("Content-Type") orelse "";
-        std.debug.print("\nContent-Type: {s}\n", .{a});
-
-        std.debug.print("\nbody hi: {d}\n", .{request.body.hi});
+        // std.debug.print("\nhi: {d}\n", .{request.body.hi});
 
         var bw = std.io.bufferedWriter(connection.stream.writer());
         const w = bw.writer();
-        try w.writeAll("hello");
+        try w.writeAll("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nhi");
+        try bw.flush();
         connection.stream.close(); 
     }
 }
