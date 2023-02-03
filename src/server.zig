@@ -87,7 +87,7 @@ pub fn start(comptime config: Config, routes: anytype) !void {
         // skips the \n
         try r.skipBytes(1, .{});
 
-        const read_body = try r.readAllAlloc(body_fba.allocator(),config.max_body_bytes);
+        const read_body = try r.readAllAlloc(body_fba.allocator(), config.max_body_bytes);
         std.debug.print("{s}", .{read_body});
         const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body);
 
