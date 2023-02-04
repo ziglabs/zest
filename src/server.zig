@@ -87,14 +87,30 @@ pub fn start(comptime config: Config, routes: anytype) !void {
         // skips the \n
         try r.skipBytes(1, .{});
 
-        const read_body = try r.readAllAlloc(body_fba.allocator(), config.max_body_bytes);
-        std.debug.print("{s}", .{read_body});
-        const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, read_body);
+        const content_length = headers_map.get("Content-Length") orelse {
+            try w.writeAll("HTTP/1.1 411\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
+
+        const content_length_number = std.fmt.parseUnsigned(u64, content_length, 10) catch {
+            try w.writeAll("HTTP/1.1 400\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
+
+        var bb = try body_fba.allocator().alloc(u8, content_length_number);
+        const read_body = try r.readAll(bb);
+        std.debug.print("{d}", .{read_body});
+        std.debug.print("{s}", .{bb});
+        const parsed_body = try b.parse(body_parse_fba.allocator(), route.request_body_type, bb);
 
         const request = req.Build(parsed_request_line, headers_map, route.request_body_type, parsed_body);
 
-        const a = request.headers.get("Content-Type") orelse "";
-        std.debug.print("\nContent-Type: {s}\n", .{a});
+        const a = request.headers.get("Content-Length") orelse "";
+        std.debug.print("\nContent-Length: {s}\n", .{a});
 
         std.debug.print("\nhi: {d}\n", .{request.body.hi});
 

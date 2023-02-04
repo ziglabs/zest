@@ -15,7 +15,7 @@ fn yoyo(req: zest.request.Request(Yes), res: *zest.response.Response(No)) anyerr
 }
 
 pub fn main() !void {
-    const config = comptime zest.server.Config{ .address = try std.net.Address.parseIp("127.0.0.1", 8080), .max_request_line_bytes = 1024, .max_headers_bytes = 1024, .max_headers_map_bytes = 1024, .max_body_bytes = 100024 };
+    const config = comptime zest.server.Config{ .address = try std.net.Address.parseIp("127.0.0.1", 8080), .max_request_line_bytes = 1024, .max_headers_bytes = 1024, .max_headers_map_bytes = 1024, .max_body_bytes = 1024 };
     const routes = .{try zest.route.Build("/hello", Yes, No, yoyo)};
     try zest.server.start(config, routes);
 }
