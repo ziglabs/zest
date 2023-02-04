@@ -6,13 +6,15 @@ const expectEqualStrings = std.testing.expectEqualStrings;
 const h = @import("headers.zig");
 const sl = @import("status_line.zig");
 
+pub const EmptyBody = struct {};
+
 pub fn Response(comptime BodyType: type) type {
     if (@typeInfo(BodyType) != .Struct) @compileError("Response expects BodyType to be a struct type");
-    return struct { status_line: sl.StatusLine, headers: h.Headers, body: BodyType };
+    return struct { status_line: sl.StatusLine, headers: h.Headers, body: ?BodyType, body_allocator: std.mem.Allocator };
 }
 
-pub fn Build(status_line: sl.StatusLine, headers: h.Headers, comptime BodyType: type, body: BodyType) Response(BodyType) {
-    return Response(BodyType){ .status_line = status_line, .headers = headers, .body = body };
+pub fn Build(status_line: sl.StatusLine, headers: h.Headers, comptime BodyType: type, body_allocator: std.mem.Allocator) Response(BodyType) {
+    return Response(BodyType){ .status_line = status_line, .headers = headers, .body = null, .body_allocator = body_allocator };
 }
 
 test "test" {
@@ -29,10 +31,11 @@ test "test" {
 
     const body = Greeting{ .hi = 9 };
 
-    const built_response = Build(status_line, headers, Greeting, body);
-
-    try expect(built_response.body.hi == 9);
-    try expect(@TypeOf(built_response.body) == Greeting);
+    var built_response = Build(status_line, headers, Greeting);
+    built_response.body = body;
+    const body_hi = if (built_response.body) |b| b else unreachable;
+    try expect(body_hi.hi == 9);
+    try expect(@TypeOf(body_hi) == Greeting);
     try expectEqualStrings(built_response.headers.get("Content-Length") orelse unreachable, "42");
     try expect(built_response.status_line.status == .ok);
     try expect(built_response.status_line.version == .http11);

@@ -6,6 +6,8 @@ const expectEqualStrings = std.testing.expectEqualStrings;
 const h = @import("headers.zig");
 const rl = @import("request_line.zig");
 
+pub const EmptyBody = struct {};
+
 pub fn Request(comptime BodyType: type) type {
     if (@typeInfo(BodyType) != .Struct) @compileError("Request expects BodyType to be a struct type");
     return struct { request_line: rl.RequestLine, headers: h.Headers, body: BodyType };

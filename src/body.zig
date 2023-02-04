@@ -90,3 +90,24 @@ test "testing 6" {
     try expectEqualStrings(result.hello, "88");
     try expect(result.you == 9);
 }
+
+test "testing 7" {
+    const Config = struct {};
+    var buffer: [6]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    const body = "{}";
+    const result = try parse(fba.allocator(), Config, body);
+    std.debug.print("{any}", .{result});
+    // try expectEqualStrings(result.greeting, "9999");
+    // try expectEqualStrings(result.hello, "88");
+    try expect(9 == 9);
+}
+
+test "testing 8" {
+    const Config = struct {};
+    const config = Config{};
+    var buffer: [1024]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    const result = try stringify(fba.allocator(), Config, config);
+    try expectEqualStrings("{}", result);
+}

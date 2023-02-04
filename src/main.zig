@@ -11,11 +11,12 @@ const No = struct {
 
 fn yoyo(req: zest.request.Request(Yes), res: *zest.response.Response(No)) anyerror!void {
     _ = req;
-    _ = res;
+    try res.headers.put("Dog", "8");
+    res.body = No{ .bye = 10 };
 }
 
 pub fn main() !void {
-    const config = comptime zest.server.Config{ .address = try std.net.Address.parseIp("127.0.0.1", 8080), .max_request_line_bytes = 1024, .max_headers_bytes = 1024, .max_headers_map_bytes = 1024, .max_body_bytes = 1024 };
+    const config = comptime try zest.server.Config.default();
     const routes = .{try zest.route.Build("/hello", Yes, No, yoyo)};
     try zest.server.start(config, routes);
 }

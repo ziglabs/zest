@@ -21,7 +21,7 @@ pub const Headers = struct {
         return self.headers.get(name);
     }
 
-    pub fn put(self: *Headers, name: []const u8, value: []const u8) !void {
+    pub fn put(self: *Headers, name: []const u8, value: []const u8) HeadersError!void {
         if (!validName(name)) return HeadersError.InvalidHeaderName;
         if (!validValue(value)) return HeadersError.InvalidHeaderValue;
 
