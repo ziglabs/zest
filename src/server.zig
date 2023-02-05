@@ -159,5 +159,3 @@ pub fn start(comptime config: Config, routes: anytype) !void {
         connection.stream.close();
     }
 }
-
-// TODO: request headers - response headers - status line - response body
