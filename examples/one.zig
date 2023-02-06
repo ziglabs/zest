@@ -14,26 +14,26 @@ const No = struct {
 };
 
 fn hello(req: Request, res: *Response) anyerror!void {
-    const request_body = try zest.body.parse(req.body_allocator, Yes, req.body_raw);
+    const request_body = try req.parseBody(Yes);
     std.debug.print("\nin hello handler: {d}\n", .{request_body.hi});
     try res.headers.put("Dog", "8");
+    const response_body = No{ .bye = request_body.hi + 10 };
+    try res.stringifyBody(No, response_body);
 }
 
 fn hi(req: Request, res: *Response) anyerror!void {
-    _ = req;
+    const request_body = try req.parseBody(Yes);
     try res.headers.put("Dog", "8");
-    res.body_raw = "{ \"bye\": 10 }";
+    const response_body = No{ .bye = request_body.hi + 10 };
+    try res.stringifyBody(No, response_body);
 }
 
 pub fn main() !void {
     const config = comptime try zest.server.Config.default();
-
-    const router = Router{
-        .routes = &.{
-            try Route.init("/hello", hello),
-            try Route.init("/hi", hi)
-        }
+    const routes = .{ 
+        try Route.init("/hello", hello), 
+        try Route.init("/hi", hi) 
     };
-
+    const router = Router.init(&routes);
     try zest.server.start(config, router);
 }

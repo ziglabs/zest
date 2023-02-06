@@ -161,6 +161,7 @@ pub fn start(comptime config: Config, router: Router) !void {
         try route.handler(request, &response);
 
         std.debug.print("\nDog: {s}", .{response.headers.get("Dog") orelse unreachable});
+        std.debug.print("\nyooo: {s}", .{response.body_raw});
   
         try w.writeAll("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nhi");
         try bw.flush();
