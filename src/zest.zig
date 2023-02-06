@@ -16,3 +16,7 @@ pub const status_line = @import("status_line.zig");
 pub const status = @import("status.zig");
 pub const url = @import("url.zig");
 pub const version = @import("version.zig");
+
+test {
+    @import("std").testing.refAllDecls(@This());
+}

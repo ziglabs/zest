@@ -15,9 +15,14 @@ pub fn parse(port: []const u8) PortError!u16 {
 }
 
 test "valid ports" {
-    try expect(try parse("9000") == 9000);
-    try expect(try parse("1") == 1);
-    try expect(try parse("65535") == 65535);
+    var port = try parse("9000");
+    try expect(port == 9000);
+
+    port = try parse("1");
+    try expect(port == 1);
+
+    port = try parse("65535");
+    try expect(port == 65535);
 }
 
 test "invalid ports" {

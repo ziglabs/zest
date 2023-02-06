@@ -43,11 +43,13 @@ test "invalid values return an error" {
 test "scheme http" {
     const scheme = Scheme.http;
     try expect(std.mem.eql(u8, scheme.toString(), "http"));
-    try expect(try parse("http") == Scheme.http);
+    const s = try parse("http");
+    try expect(s == Scheme.http);
 }
 
 test "scheme https" {
     const scheme = Scheme.https;
     try expect(std.mem.eql(u8, scheme.toString(), "https"));
-    try expect(try parse("https") == Scheme.https);
+    const s = try parse("https");
+    try expect(s == Scheme.https);
 }

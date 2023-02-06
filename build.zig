@@ -1,17 +1,48 @@
 const std = @import("std");
 
 pub fn build(b: *std.build.Builder) void {
-    // Standard release options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const lib = b.addStaticLibrary("zest", "src/main.zig");
-    lib.setBuildMode(mode);
-    lib.install();
+    // builds the library as a static library
+    {
+        const lib = b.addStaticLibrary("zest", "src/zest.zig");
+        lib.setBuildMode(mode);
+        lib.install();
+    }
 
-    const main_tests = b.addTest("src/main.zig");
-    main_tests.setBuildMode(mode);
+    // builds and runs the tests
+    {
+        const main_tests = b.addTest("src/zest.zig");
+        main_tests.setBuildMode(mode);
+        main_tests.use_stage1 = true;
+        const test_step = b.step("test", "Run library tests");
+        test_step.dependOn(&main_tests.step);
+    }
 
-    const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&main_tests.step);
+    // examples
+    {
+        var opt = b.option([]const u8, "example", "The example to build & run") orelse "one";
+        const example_file = blk: {
+            if (std.mem.eql(u8, opt, "one"))
+                break :blk "examples/one.zig";
+
+            break :blk "examples/one.zig";
+        };
+
+        // allows for running the example
+        var example = b.addExecutable(opt, example_file);
+        example.addPackage(.{
+            .name = "zest",
+            .source = .{ .path = "src/zest.zig" },
+        });
+        example.setBuildMode(mode);
+        example.use_stage1 = true;
+        example.install();
+
+        const run_example = example.run();
+        run_example.step.dependOn(b.getInstallStep());
+
+        const example_step = b.step("example", "Run example");
+        example_step.dependOn(&run_example.step);
+    }
 }

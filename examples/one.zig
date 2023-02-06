@@ -1,5 +1,5 @@
 const std = @import("std");
-const zest = @import("zest.zig");
+const zest = @import("zest");
 const Request = zest.request.Request;
 const Response = zest.response.Response;
 const Route = zest.route.Route;
