@@ -11,29 +11,33 @@ const s = @import("status.zig");
 const v = @import("version.zig");
 const Router = @import("router.zig").Router;
 
-// address defaults to 127.0.0.1:8080
-// all byte counts defaults to 1kb
 pub const Config = struct {
     address: std.net.Address,
-    max_read_request_line_bytes: u64 = 1024,
-    max_read_request_headers_bytes: u64 = 1024,
-    max_request_headers_map_bytes: u64 = 1024,
-    max_response_headers_map_bytes: u64 = 1024,
-    max_read_request_body_bytes: u64 = 1024,
-    max_request_body_parse_bytes: u64 = 1024,
-    max_response_body_bytes: u64 = 1024,
-    max_response_body_stringify_bytes: u64 = 1024,
+    max_read_request_line_bytes: u64,
+    max_read_request_headers_bytes: u64,
+    max_request_headers_map_bytes: u64,
+    max_response_headers_map_bytes: u64,
+    max_read_request_body_bytes: u64,
+    max_request_body_parse_bytes: u64,
+    max_response_body_bytes: u64,
+    max_response_body_stringify_bytes: u64,
 
-    pub fn init(address_name: []const u8, address_port: u16, max_read_request_line_bytes: u64, max_read_request_headers_bytes: u64, max_request_headers_map_bytes: u64, max_response_headers_map_bytes: u64, max_read_request_body_bytes: u64, max_request_body_parse_bytes: u64, max_response_body_bytes: u64, max_response_body_stringify_bytes: u64) !Config {
-        return Config{ .address = try std.net.Address.parseIp(address_name, address_port), .max_read_request_line_bytes = max_read_request_line_bytes, .max_read_request_headers_bytes = max_read_request_headers_bytes, .max_request_headers_map_bytes = max_request_headers_map_bytes, .max_response_headers_map_bytes = max_response_headers_map_bytes, .max_read_request_body_bytes = max_read_request_body_bytes, .max_request_body_parse_bytes = max_request_body_parse_bytes, .max_response_body_bytes = max_response_body_bytes, .max_response_body_stringify_bytes = max_response_body_stringify_bytes };
-    }
-
-    pub fn default() !Config {
-        return Config{ .address = try std.net.Address.parseIp("127.0.0.1", 8080) };
+    pub fn init(address_name: []const u8, address_port: u16, buffer_bytes: u64) !Config {
+        return Config{ 
+            .address = try std.net.Address.parseIp(address_name, address_port),
+            .max_read_request_line_bytes = buffer_bytes, 
+            .max_read_request_headers_bytes = buffer_bytes, 
+            .max_request_headers_map_bytes = buffer_bytes, 
+            .max_response_headers_map_bytes = buffer_bytes, 
+            .max_read_request_body_bytes = buffer_bytes, 
+            .max_request_body_parse_bytes = buffer_bytes, 
+            .max_response_body_bytes = buffer_bytes, 
+            .max_response_body_stringify_bytes = buffer_bytes
+        };
     }
 };
 
-pub fn start(comptime config: Config, router: Router) !void {
+pub fn start(comptime config: Config, comptime router: Router) !void {
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
     try server.listen(config.address);

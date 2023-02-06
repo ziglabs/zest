@@ -1,5 +1,6 @@
 const std = @import("std");
 const zest = @import("zest");
+const server = zest.server;
 const Request = zest.request.Request;
 const Response = zest.response.Response;
 const Route = zest.route.Route;
@@ -29,11 +30,11 @@ fn hi(req: Request, res: *Response) anyerror!void {
 }
 
 pub fn main() !void {
-    const config = comptime try zest.server.Config.default();
-    const routes = .{ 
+    const config = comptime try server.Config.init("127.0.0.1", 8080, 1024);
+    const routes = comptime .{ 
         try Route.init("/hello", hello), 
         try Route.init("/hi", hi) 
     };
-    const router = Router.init(&routes);
-    try zest.server.start(config, router);
+    const router = comptime Router.init(&routes);
+    try server.start(config, router);
 }

@@ -9,9 +9,9 @@ pub const Route = struct {
     path: []const u8,
     handler: fn (Request, *Response) anyerror!void,
 
-    pub fn init(path: []const u8, handler: fn (Request, *Response) anyerror!void) !Route {
+    pub fn init(comptime path: []const u8, handler: fn (Request, *Response) anyerror!void) p.PathError!Route {
         return Route{
-            .path = try p.parse(path),
+            .path = p.parse(path) catch @compileError("path \"" ++ path ++ "\" is invalid"),
             .handler = handler,
         };
     }
