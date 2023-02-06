@@ -1,5 +1,9 @@
 const std = @import("std");
 const zest = @import("zest.zig");
+const Request = zest.request.Request;
+const Response = zest.response.Response;
+const Route = zest.route.Route;
+const Router = zest.router.Router;
 
 const Yes = struct {
     hi: u8,
@@ -9,22 +13,27 @@ const No = struct {
     bye: u8,
 };
 
-fn hello(req: zest.request.Request(Yes), res: *zest.response.Response(No)) anyerror!void {
-    _ = req;
+fn hello(req: Request, res: *Response) anyerror!void {
+    const request_body = try zest.body.parse(req.body_allocator, Yes, req.body_raw);
+    std.debug.print("\nin hello handler: {d}\n", .{request_body.hi});
     try res.headers.put("Dog", "8");
-    res.body = No{ .bye = 10 };
 }
 
-fn hi(req: zest.request.Request(zest.request.EmptyBody), res: *zest.response.Response(zest.response.EmptyBody)) anyerror!void {
+fn hi(req: Request, res: *Response) anyerror!void {
     _ = req;
     try res.headers.put("Dog", "8");
+    res.body_raw = "{ \"bye\": 10 }";
 }
 
 pub fn main() !void {
     const config = comptime try zest.server.Config.default();
-    const routes = comptime .{ 
-        try zest.route.Build("/hello", Yes, No, hello), 
-        try zest.route.Build("/hi", zest.request.EmptyBody, zest.response.EmptyBody, hi) 
+
+    const router = Router{
+        .routes = &.{
+            try Route.init("/hello", hello),
+            try Route.init("/hi", hi)
+        }
     };
-    try zest.server.start(config, routes);
+
+    try zest.server.start(config, router);
 }
