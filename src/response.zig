@@ -7,6 +7,8 @@ const h = @import("headers.zig");
 const sl = @import("status_line.zig");
 const b = @import("body.zig");
 
+pub const EmptyBody = struct{};
+
 pub const Response = struct {
     status_line: sl.StatusLine,
     headers: h.Headers,

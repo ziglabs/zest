@@ -23,17 +23,7 @@ pub const Config = struct {
     max_response_body_stringify_bytes: u64,
 
     pub fn init(address_name: []const u8, address_port: u16, buffer_bytes: u64) !Config {
-        return Config{ 
-            .address = try std.net.Address.parseIp(address_name, address_port),
-            .max_read_request_line_bytes = buffer_bytes, 
-            .max_read_request_headers_bytes = buffer_bytes, 
-            .max_request_headers_map_bytes = buffer_bytes, 
-            .max_response_headers_map_bytes = buffer_bytes, 
-            .max_read_request_body_bytes = buffer_bytes, 
-            .max_request_body_parse_bytes = buffer_bytes, 
-            .max_response_body_bytes = buffer_bytes, 
-            .max_response_body_stringify_bytes = buffer_bytes
-        };
+        return Config{ .address = try std.net.Address.parseIp(address_name, address_port), .max_read_request_line_bytes = buffer_bytes, .max_read_request_headers_bytes = buffer_bytes, .max_request_headers_map_bytes = buffer_bytes, .max_response_headers_map_bytes = buffer_bytes, .max_read_request_body_bytes = buffer_bytes, .max_request_body_parse_bytes = buffer_bytes, .max_response_body_bytes = buffer_bytes, .max_response_body_stringify_bytes = buffer_bytes };
     }
 };
 
@@ -41,6 +31,8 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
     try server.listen(config.address);
+
+    log.info("listening on {}", .{config.address});
 
     var read_request_line_buffer: [config.max_read_request_line_bytes]u8 = undefined;
     var read_request_line_fba = std.heap.FixedBufferAllocator.init(&read_request_line_buffer);
@@ -66,7 +58,6 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
     var response_body_stringify_buffer: [config.max_response_body_stringify_bytes]u8 = undefined;
     var response_body_stringify_fba = std.heap.FixedBufferAllocator.init(&response_body_stringify_buffer);
 
-    // TODO: handle errors and respond appropriately
     while (true) : ({
         read_request_line_fba.reset();
         read_request_headers_fba.reset();
@@ -79,7 +70,7 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
     }) {
         var connection = server.accept() catch |err| switch (err) {
             error.ConnectionResetByPeer, error.ConnectionAborted => {
-                log.err("Could not accept connection: '{s}'", .{@errorName(err)});
+                log.err("could not accept connection: '{s}'", .{@errorName(err)});
                 continue;
             },
             else => return err,
@@ -91,8 +82,32 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
         var bw = std.io.bufferedWriter(connection.stream.writer());
         const w = bw.writer();
 
-        const read_request_line = try r.readUntilDelimiterAlloc(read_request_line_fba.allocator(), '\r', config.max_read_request_line_bytes);
-        const request_line = try rl.parse(read_request_line);
+        const read_request_line = r.readUntilDelimiterAlloc(read_request_line_fba.allocator(), '\r', config.max_read_request_line_bytes) catch {
+            try w.writeAll("HTTP/1.1 400\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
+        const request_line = rl.parse(read_request_line) catch |err| switch (err) {
+            error.InvalidRequestLine, error.InvalidPath => {
+                try w.writeAll("HTTP/1.1 400\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            },
+            error.UnsupportedMethod => {
+                try w.writeAll("HTTP/1.1 405\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            },
+            error.UnsupportedVersion => {
+                try w.writeAll("HTTP/1.1 505\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            },
+        };
 
         const route = router.find(request_line.path) orelse {
             try w.writeAll("HTTP/1.1 404\r\n\r\n");
@@ -102,19 +117,44 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
         };
 
         // skips the \n
-        try r.skipBytes(1, .{});
+        r.skipBytes(1, .{}) catch {
+            try w.writeAll("HTTP/1.1 400\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
 
         var request_headers_map = h.Headers.init(request_headers_map_fba.allocator());
         read_request_headers: while (true) {
-            const read_request_header = try r.readUntilDelimiterAlloc(read_request_headers_fba.allocator(), '\r', config.max_read_request_headers_bytes);
+            const read_request_header = r.readUntilDelimiterAlloc(read_request_headers_fba.allocator(), '\r', config.max_read_request_headers_bytes) catch {
+                try w.writeAll("HTTP/1.1 400\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            };
             if (std.mem.eql(u8, read_request_header, "")) break :read_request_headers;
-            try request_headers_map.parse(read_request_header);
+            request_headers_map.parse(read_request_header) catch {
+                try w.writeAll("HTTP/1.1 400\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            };
             // skips the \n
-            try r.skipBytes(1, .{});
+            r.skipBytes(1, .{}) catch {
+                try w.writeAll("HTTP/1.1 400\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            };
         }
 
         // skips the \n
-        try r.skipBytes(1, .{});
+        r.skipBytes(1, .{}) catch {
+            try w.writeAll("HTTP/1.1 400\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
 
         const content_length_string = request_headers_map.get("Content-Length") orelse {
             try w.writeAll("HTTP/1.1 411\r\n\r\n");
@@ -137,8 +177,32 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
             continue;
         }
 
-        var request_body_raw = try read_request_body_fba.allocator().alloc(u8, content_length_number);
-        const read_request_body_count = try r.readAll(request_body_raw);
+        const content_type = request_headers_map.get("Content-Type") orelse {
+            try w.writeAll("HTTP/1.1 400\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
+
+        if (!std.mem.eql(u8, content_type, "application/json")) {
+            try w.writeAll("HTTP/1.1 400\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        }
+
+        var request_body_raw = read_request_body_fba.allocator().alloc(u8, content_length_number) catch {
+            try w.writeAll("HTTP/1.1 400\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
+        const read_request_body_count = r.readAll(request_body_raw) catch {
+            try w.writeAll("HTTP/1.1 400\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
 
         if (read_request_body_count > content_length_number) {
             try w.writeAll("HTTP/1.1 400\r\n\r\n");
@@ -147,26 +211,32 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
             continue;
         }
 
-        
-        const request = req.Request{
-            .request_line = request_line,
-            .headers = request_headers_map,
-            .body_raw = request_body_raw,
-            .body_allocator = request_body_parse_fba.allocator()
-        };
+        const request = req.Request{ .request_line = request_line, .headers = request_headers_map, .body_raw = request_body_raw, .body_allocator = request_body_parse_fba.allocator() };
         var response_headers_map = h.Headers.init(response_headers_map_fba.allocator());
+        response_headers_map.parse("Content-Type: application/json") catch {
+            try w.writeAll("HTTP/1.1 500\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
+        response_headers_map.parse("Connection: close") catch {
+            try w.writeAll("HTTP/1.1 500\r\n\r\n");
+            try bw.flush();
+            connection.stream.close();
+            continue;
+        };
         var response = res.Response{
             .status_line = sl.StatusLine{ .version = v.Version.http11, .status = s.Status.ok },
-            .headers = response_headers_map, 
+            .headers = response_headers_map,
             .body_raw = "{}",
             .body_allocator = response_body_fba.allocator(),
             .body_stringify_allocator = response_body_stringify_fba.allocator(),
         };
-        try route.handler(request, &response);
+        route.handler(request, &response);
 
         std.debug.print("\nDog: {s}", .{response.headers.get("Dog") orelse unreachable});
         std.debug.print("\nyooo: {s}", .{response.body_raw});
-  
+
         try w.writeAll("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nhi");
         try bw.flush();
         connection.stream.close();

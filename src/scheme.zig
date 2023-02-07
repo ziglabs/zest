@@ -9,7 +9,6 @@ pub const SchemeError = error{
 // https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml
 pub const Scheme = enum {
     http,
-    https,
 
     pub fn toString(self: Scheme) []const u8 {
         return schemes[@enumToInt(self)];
@@ -17,7 +16,7 @@ pub const Scheme = enum {
 };
 
 // https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml
-pub const schemes = [_][]const u8{ "http", "https" };
+pub const schemes = [_][]const u8{ "http" };
 
 pub fn parse(scheme: []const u8) SchemeError!Scheme {
     for (schemes) |v, i| {
@@ -45,11 +44,4 @@ test "scheme http" {
     try expect(std.mem.eql(u8, scheme.toString(), "http"));
     const s = try parse("http");
     try expect(s == Scheme.http);
-}
-
-test "scheme https" {
-    const scheme = Scheme.https;
-    try expect(std.mem.eql(u8, scheme.toString(), "https"));
-    const s = try parse("https");
-    try expect(s == Scheme.https);
 }

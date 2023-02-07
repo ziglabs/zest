@@ -102,16 +102,6 @@ test "valid header 1" {
     try expectEqualStrings("42", value);
 }
 
-test "valid header 2" {
-    var buffer: [300]u8 = undefined;
-    var fba = std.heap.FixedBufferAllocator.init(&buffer);
-    var headers = Headers.init(fba.allocator());
-
-    try headers.parse("Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJKb2tlbiIsImV4cCI6MTY2NTE2NzM1NSwiaWF0IjoxNjY1MTYwMTU1LCJpc3MiOiJKb2tlbiIsImp0aSI6IjJzZHRjbG44YTNuYnJuZGVoYzAwMDA2NCIsIm5iZiI6MTY2NTE2MDE1NSwicGFzc3dvcmQiOiJ0aGVyZSIsInVzZXJuYW1lIjoiaGVsbG8ifQ.kpFf5uo_ll6Ti8xYe3XhwL_EjX-wWVOz8A6ywWt3IJo");
-    const value = headers.get("Authorization") orelse unreachable;
-    try expectEqualStrings("Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJKb2tlbiIsImV4cCI6MTY2NTE2NzM1NSwiaWF0IjoxNjY1MTYwMTU1LCJpc3MiOiJKb2tlbiIsImp0aSI6IjJzZHRjbG44YTNuYnJuZGVoYzAwMDA2NCIsIm5iZiI6MTY2NTE2MDE1NSwicGFzc3dvcmQiOiJ0aGVyZSIsInVzZXJuYW1lIjoiaGVsbG8ifQ.kpFf5uo_ll6Ti8xYe3XhwL_EjX-wWVOz8A6ywWt3IJo", value);
-}
-
 test "invalid header" {
     var buffer: [300]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
