@@ -32,7 +32,7 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
     defer server.deinit();
     try server.listen(config.address);
 
-    log.info("listening on {}", .{config.address});
+    log.info("listening at {}", .{config.address});
 
     var read_request_line_buffer: [config.max_read_request_line_bytes]u8 = undefined;
     var read_request_line_fba = std.heap.FixedBufferAllocator.init(&read_request_line_buffer);
@@ -213,18 +213,6 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
 
         const request = req.Request{ .request_line = request_line, .headers = request_headers_map, .body_raw = request_body_raw, .body_allocator = request_body_parse_fba.allocator() };
         var response_headers_map = h.Headers.init(response_headers_map_fba.allocator());
-        response_headers_map.parse("Content-Type: application/json") catch {
-            try w.writeAll("HTTP/1.1 500\r\n\r\n");
-            try bw.flush();
-            connection.stream.close();
-            continue;
-        };
-        response_headers_map.parse("Connection: close") catch {
-            try w.writeAll("HTTP/1.1 500\r\n\r\n");
-            try bw.flush();
-            connection.stream.close();
-            continue;
-        };
         var response = res.Response{
             .status_line = sl.StatusLine{ .version = v.Version.http11, .status = s.Status.ok },
             .headers = response_headers_map,
@@ -232,12 +220,42 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
             .body_allocator = response_body_fba.allocator(),
             .body_stringify_allocator = response_body_stringify_fba.allocator(),
         };
-        route.handler(request, &response);
+        route.handler(request, &response) catch |err| switch (err) {
+            error.CannotParseBody => {
+                try w.writeAll("HTTP/1.1 400\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            },
+            error.CannotStringifyBody, error.InvalidHeader, error.InvalidHeaderName, error.InvalidHeaderValue, error.OutOfSpace, error.InvalidStatusLine, error.InvalidStatusCode, error.UnsupportedVersion => {
+                try w.writeAll("HTTP/1.1 500\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            },
+            else => {
+                try w.writeAll("HTTP/1.1 500\r\n\r\n");
+                try bw.flush();
+                connection.stream.close();
+                continue;
+            },
+        };
 
-        std.debug.print("\nDog: {s}", .{response.headers.get("Dog") orelse unreachable});
-        std.debug.print("\nyooo: {s}", .{response.body_raw});
+        // status line
+        try w.print("{s} {s}\r\n", .{ response.status_line.version.toString(), response.status_line.status.toString() });
 
-        try w.writeAll("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nhi");
+        // headers
+        try w.writeAll("Connection: close\r\n");
+        try w.writeAll("Content-Type: application/json\r\n");
+        try w.print("Content-Length: {d}\r\n", .{response.body_raw.len});
+        var headers_iterator = response.headers.iterator();
+        while (headers_iterator.next()) |header| {
+            // try w.print("{s}: {s}\r\n", .{header.key_ptr.*, header.value_ptr.*});
+            std.debug.print("{s}: {s}\r\n", .{ header.key_ptr.*, header.value_ptr.* });
+        }
+        // body
+        try w.print("\r\n{s}", .{response.body_raw});
+
         try bw.flush();
         connection.stream.close();
     }

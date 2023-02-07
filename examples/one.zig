@@ -8,22 +8,23 @@ const Router = zest.router.Router;
 
 const Person = struct {
     name: []const u8,
-    favorite_food: []const u8,
+    age: u16,
 };
 
-const SillyPhrase = struct {
+const Friend = struct {
     name: []const u8,
+    age: u16,
 };
 
-fn sillyPhraseGenerator(req: Request, res: *Response) void {
-    const request_body = req.parseBody(Person) catch unreachable;
-    const response_body = SillyPhrase{ .name = "Zippy " ++ request_body.favorite_food ++ " " ++ request_body.name ++ " McZappy" };
-    res.stringifyBody(SillyPhrase, response_body) catch unreachable;
+fn findFriend(req: Request, res: *Response) anyerror!void {
+    const request_body = try req.parseBody(Person);
+    const response_body = Friend{ .name = "Zippy McZappy", .age = request_body.age * 2 };
+    try res.stringifyBody(Friend, response_body);
 }
 
 pub fn main() !void {
     const config = comptime try server.Config.init("127.0.0.1", 8080, 1024);
-    const routes = comptime .{ try Route.init("/sillyPhraseGenerator", sillyPhraseGenerator) };
+    const routes = comptime .{ try Route.init("/findFriend", findFriend) };
     const router = comptime Router.init(&routes);
     try server.start(config, router);
 }

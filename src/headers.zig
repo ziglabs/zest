@@ -13,6 +13,10 @@ pub const HeadersError = error{
 pub const Headers = struct {
     headers: std.StringHashMap([]const u8),
 
+    pub fn iterator(self: Headers) std.StringHashMap([]const u8).Iterator {
+        return self.headers.iterator();
+    }
+
     pub fn init(allocator: std.mem.Allocator) Headers {
         return Headers{ .headers = std.StringHashMap([]const u8).init(allocator) };
     }
@@ -32,10 +36,10 @@ pub const Headers = struct {
         if (header.len == 0) return HeadersError.InvalidHeader;
         if (std.mem.count(u8, header, ": ") != 1) return HeadersError.InvalidHeader;
 
-        var iterator = std.mem.split(u8, header, ": ");
-        const name = iterator.first();
-        const value = if (iterator.next()) |v| v else return HeadersError.InvalidHeader;
-        
+        var iter = std.mem.split(u8, header, ": ");
+        const name = iter.first();
+        const value = if (iter.next()) |v| v else return HeadersError.InvalidHeader;
+
         try self.put(name, value);
     }
 };

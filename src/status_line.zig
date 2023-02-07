@@ -3,8 +3,6 @@ const expect = std.testing.expect;
 const expectEqualStrings = std.testing.expectEqualStrings;
 const expectError = std.testing.expectError;
 
-const method = @import("method.zig");
-const path = @import("path.zig");
 const status = @import("status.zig");
 const version = @import("version.zig");
 
@@ -12,7 +10,7 @@ pub const StatusLineError = error{
     InvalidStatusLine,
 };
 
-pub const Error = StatusLineError || method.MethodError || path.PathError || status.StatusError || version.VersionError;
+pub const Error = StatusLineError || status.StatusError || version.VersionError;
 
 pub const StatusLine = struct {
     version: version.Version,
@@ -36,7 +34,7 @@ pub fn parse(status_line: []const u8) Error!StatusLine {
     return StatusLine{ .version = parsed_version, .status = parsed_status };
 }
 
-test "valid response start path" {
+test "valid response status line" {
     const status_line = "HTTP/1.1 200";
     const result = try parse(status_line);
     try expect(result.version == version.Version.http11);
