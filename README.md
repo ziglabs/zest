@@ -34,6 +34,14 @@ pub fn main() !void {
 }
 ```
 
+## Constraints
+
+* No url params
+* No query params
+* Only POST requests
+* Requires `Content-Type: application/json` in request headers
+* Requires `Content-Length: <length_here>` in request headers
+* At a minimum an empty object `{}` must be sent in the request / response
 ## Building
 Zest is being developed on Zig version 0.10.1 and will be kept up to date with new releases.
 
