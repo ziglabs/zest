@@ -21,6 +21,7 @@ pub fn build(b: *std.build.Builder) void {
 
     // examples
     {
+        const target = b.standardTargetOptions(.{});
         var opt = b.option([]const u8, "example", "The example to build & run") orelse "scouter";
         const example_file = blk: {
             if (std.mem.eql(u8, opt, "scouter"))
@@ -31,6 +32,7 @@ pub fn build(b: *std.build.Builder) void {
 
         // allows for running the example
         var example = b.addExecutable(opt, example_file);
+        example.setTarget(target);
         example.addPackage(.{
             .name = "zest",
             .source = .{ .path = "src/zest.zig" },
