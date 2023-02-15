@@ -248,8 +248,7 @@ pub fn start(comptime config: Config, comptime router: Router) !void {
         try w.print("Content-Length: {d}\r\n", .{response.body_raw.len});
         var headers_iterator = response.headers.iterator();
         while (headers_iterator.next()) |header| {
-            // try w.print("{s}: {s}\r\n", .{header.key_ptr.*, header.value_ptr.*});
-            std.debug.print("{s}: {s}\r\n", .{ header.key_ptr.*, header.value_ptr.* });
+            try w.print("{s}: {s}\r\n", .{header.key_ptr.*, header.value_ptr.*});
         }
         // body
         try w.print("\r\n{s}", .{response.body_raw});

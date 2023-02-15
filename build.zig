@@ -21,12 +21,12 @@ pub fn build(b: *std.build.Builder) void {
 
     // examples
     {
-        var opt = b.option([]const u8, "example", "The example to build & run") orelse "one";
+        var opt = b.option([]const u8, "example", "The example to build & run") orelse "scouter";
         const example_file = blk: {
-            if (std.mem.eql(u8, opt, "one"))
-                break :blk "examples/one.zig";
+            if (std.mem.eql(u8, opt, "scouter"))
+                break :blk "examples/scouter.zig";
 
-            break :blk "examples/one.zig";
+            break :blk "examples/scouter.zig";
         };
 
         // allows for running the example

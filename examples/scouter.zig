@@ -8,24 +8,22 @@ const Router = zest.router.Router;
 
 const Person = struct {
     name: []const u8,
-    age: u16,
 };
 
-const Friend = struct {
-    name: []const u8,
-    age: u16,
+const ScouterReading = struct {
+    power_level: u64
 };
 
-fn findFriend(req: Request, res: *Response) anyerror!void {
+fn scouter(req: Request, res: *Response) anyerror!void {
     const request_body = try req.parseBody(Person);
-    const friend_name = try std.mem.join(res.body_allocator, " ", &.{ "Zippy", request_body.name, "McZappy" });
-    const response_body = Friend{ .name = friend_name, .age = request_body.age * 2 };
-    try res.stringifyBody(Friend, response_body);
+    const power_level: u64 = if (std.mem.eql(u8, "goku", request_body.name)) 9000 else 1;
+    const response_body = ScouterReading{ .power_level = power_level };
+    try res.stringifyBody(ScouterReading, response_body);
 }
 
 pub fn main() !void {
     const config = comptime try server.Config.init("127.0.0.1", 8080, 1024);
-    const routes = comptime .{try Route.init("/findFriend", findFriend)};
+    const routes = comptime .{try Route.init("/scouter", scouter)};
     const router = comptime Router.init(&routes);
     try server.start(config, router);
 }
